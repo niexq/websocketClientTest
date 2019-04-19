@@ -158,7 +158,7 @@ export function sendMessage({ serviceType, messageType, message }) {
 ~~~
 
 3.最终操作效果图
-![png1](//note.youdao.com/yws/res/3356/WEBRESOURCE505f6b79cfc1771d37b08fede7a0daef)
+![png1](http://note.youdao.com/yws/res/3356/WEBRESOURCE505f6b79cfc1771d37b08fede7a0daef?ynotemdtimestamp=1555665431929)
 
 
 
