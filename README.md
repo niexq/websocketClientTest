@@ -1,68 +1,186 @@
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## websocketClientTest
+使用node.js+socket.io+koa+reactjs搭建WebSocket简单的实时通信，客户端代码
 
-## Available Scripts
+#### 本篇相关github代码地址
 
-In the project directory, you can run:
+服务端地址：https://github.com/niexq/webSocketTest
 
-### `npm start`
+客户端地址：https://github.com/niexq/websocketClientTest
 
-Runs the app in the development mode.<br>
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+#### 1.服务端相关配置
+1.1 安装[koa](https://github.com/koajs/koa)
+~~~
+npm install --save koa
+~~~
 
-The page will reload if you make edits.<br>
-You will also see any lint errors in the console.
+1.2 安装[socket.io](https://github.com/socketio/socket.io)
+~~~
+npm install --save socket.io
+~~~
 
-### `npm test`
+1.3 index.js简略代码
+~~~
+require('colors');
+const Koa = require('koa');
+const app = new Koa();
+const server = require('http').createServer(app.callback());
+const io = require('socket.io')(server);
 
-Launches the test runner in the interactive watch mode.<br>
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
 
-### `npm run build`
+io.of('/chat').on('connection', function(socket) {
+    
+    ...
+    
+    socket.emit('request', /* */); // emit an event to the socket
+    
+    socket.on('reply', function(){ /* */ }); // listen to the event
+    
+    socket.emit('news', { hello: 'world' });
+    
+    socket.on('my other event', function (data) {
+        console.log(data);
+    });
 
-Builds the app for production to the `build` folder.<br>
-It correctly bundles React in production mode and optimizes the build for the best performance.
+});
 
-The build is minified and the filenames include the hashes.<br>
-Your app is ready to be deployed!
+server.listen(8899);
+console.error('websocket test server start'.green);
+~~~
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+##### 2.客户端相关配置
+2.1 可直接用[create-react-app](https://github.com/facebook/create-react-app)或[ant方式](https://ant.design/docs/react/use-with-create-react-app-cn)
+~~~
+npx create-react-app websocket-client-test
 
-### `npm run eject`
+cd websocket-client-test
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+npm start
+~~~
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+2.2. 安装[socket.io-client](https://github.com/socketio/socket.io-client)
+~~~
+npm install --save socket.io-client
+~~~
 
-Instead, it will copy all the configuration files and the transitive dependencies (Webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+2.3 封装WebSocket，在应用入口js中引入
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+WebSocket.js
+~~~
+export default class WebSocket extends Component {
+    ...
+}
+~~~
+App.js
+~~~
+export default class App extends Component {
 
-## Learn More
+    ...
+    
+    render () {
+        return (
+            <div>
+                ...
+                <WebSocket />
+            </div>
+        )
+    }
+}
+~~~
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+lib/websocket.js,websocket相关方法封装
+~~~
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+import io from 'socket.io-client';
+import _ from 'lodash';
+import { getCurrentUser } from './utils';
 
-### Code Splitting
+import { Socket } from 'dgram';
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/code-splitting
+const env = process.env.NODE_ENV || 'development';
+const config = require(`./config.${env}`);
 
-### Analyzing the Bundle Size
+export const CHATWEBSOCKET = 'CHATWEBSOCKET'
+export const NEWSWEBSOCKET = 'NEWSWEBSOCKET'
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size
 
-### Making a Progressive Web App
+const chatWebSocket = io(config.chatWebSocket,{
+  autoConnect: false
+});
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app
 
-### Advanced Configuration
+const newsWebSocket = io(config.newsWebSocket,{
+  autoConnect: false
+});
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/advanced-configuration
+export function chatSocketBind(cb){
+  console.error('~~~~~chatWebSocket', chatWebSocket);
+  if(!chatWebSocket.connected) chatWebSocket.open();
 
-### Deployment
+  // 把当前用户名称发给服务器缓存下来，然后服务器给指定用户发信息(按业务需要，可以把当前用户信息包括token信息发给服务器缓存下来，然后服务器给指定用户发信息)
+  const { id, token } = getCurrentUser();
+  if(!id || !token) return;
+  chatWebSocket.emit('chatSocketBind', id, token);
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/deployment
+  // 绑定chat服务器发来的notify消息
+  if(_.isFunction(cb)) chatWebSocket.on('notify', (...args) => cb(...args));
 
-### `npm run build` fails to minify
+  // chatWebSocket.emit('firstMessageType', '嗨，我要建立websocket协议，需要chat服务')
+}
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify
+export function newsSocketBind(cb){
+  if(!newsWebSocket.connected) newsWebSocket.open();
+
+  // 把当前用户名称发给服务器缓存下来，然后服务器给指定用户发信息
+  const { id, token } = getCurrentUser();
+  if(!id || !token) return;
+  newsWebSocket.emit('newsSocketBind', id, token);
+
+  // 绑定news服务器发来的notify消息
+  if(_.isFunction(cb)) newsWebSocket.on('notify', (...args) => cb(...args));
+}
+
+export function sendMessage({ serviceType, messageType, message }) {
+  const { id, name, token } = getCurrentUser();
+  if(!id || !token) return;
+
+  switch(serviceType) {
+    case CHATWEBSOCKET:
+      chatWebSocket.emit(messageType, id, name, message);
+      break;
+    case NEWSWEBSOCKET:
+      newsWebSocket.emit(messageType, id, name, message);
+      break;
+    default:
+      break;
+  }
+}
+
+~~~
+
+3.最终操作效果图
+![png1](//note.youdao.com/yws/res/3356/WEBRESOURCE505f6b79cfc1771d37b08fede7a0daef)
+
+
+
+#### 篇外：HTML5 WebSocket
+WebSocket 是 HTML5 开始提供的一种在单个 TCP 连接上进行全双工通讯的协议。
+
+WebSocket 使得客户端和服务器之间的数据交换变得更加简单，允许服务端主动向客户端推送数据。在 WebSocket API 中，浏览器和服务器只需要完成一次握手，两者之间就直接可以创建持久性的连接，并进行双向数据传输。
+
+在 WebSocket API 中，浏览器和服务器只需要做一个握手的动作，然后，浏览器和服务器之间就形成了一条快速通道。两者之间就直接可以数据互相传送。
+
+现在，很多网站为了实现推送技术，所用的技术都是 Ajax 轮询。轮询是在特定的的时间间隔（如每1秒），由浏览器对服务器发出HTTP请求，然后由服务器返回最新的数据给客户端的浏览器。这种传统的模式带来很明显的缺点，即浏览器需要不断的向服务器发出请求，然而HTTP请求可能包含较长的头部，其中真正有效的数据可能只是很小的一部分，显然这样会浪费很多的带宽等资源。
+
+HTML5 定义的 WebSocket 协议，能更好的节省服务器资源和带宽，并且能够更实时地进行通讯。
+
+![png](http://www.runoob.com/wp-content/uploads/2016/03/ws.png)
+
+##### 有关更多详细信息，请参阅：
+
+[socket.io](https://socket.io/docs)
+
+[HTML5 WebSocket](http://www.runoob.com/html/html5-websocket.html)
+
+
+
+
