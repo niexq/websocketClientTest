@@ -159,7 +159,7 @@ export function sendMessage({ serviceType, messageType, message }) {
 
 3.最终操作效果图
 
-![png1](https://note.youdao.com/yws/res/3356/WEBRESOURCE505f6b79cfc1771d37b08fede7a0daef)
+![操作效果图](https://github.com/niexq/niexqStatic/blob/master/websocket/websocketTest.png?raw=true)
 
 
 
